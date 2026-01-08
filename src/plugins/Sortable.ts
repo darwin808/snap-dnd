@@ -21,6 +21,7 @@ export class Sortable implements Plugin {
   private _snap: SnapInstance | null = null;
   private _options: SortableOptions;
   private _placeholder: HTMLElement | null = null;
+  private _draggedElement: HTMLElement | null = null;
   private _originalIndex: number = -1;
   private _currentIndex: number = -1;
   private _container: HTMLElement | null = null;
@@ -76,6 +77,9 @@ export class Sortable implements Plugin {
   }
 
   private _onDragStart(element: HTMLElement): void {
+    // Store reference to dragged element
+    this._draggedElement = element;
+
     // Find container and items
     this._container = element.parentElement;
     if (!this._container) return;
@@ -103,12 +107,11 @@ export class Sortable implements Plugin {
     if (!this._placeholder || !this._container) return;
 
     const selector = this._snap?.options.draggableSelector ?? '[data-draggable]';
-    const activeElement = this._snap?.getActiveElement();
 
-    // Get current items (excluding the dragged element)
+    // Get current items (excluding the dragged element and placeholder)
     const items = Array.from(
       this._container.querySelectorAll<HTMLElement>(selector)
-    ).filter((el) => el !== activeElement && el !== this._placeholder);
+    ).filter((el) => el !== this._draggedElement && el !== this._placeholder);
 
     if (items.length === 0) {
       this._currentIndex = 0;
@@ -168,19 +171,21 @@ export class Sortable implements Plugin {
       box-sizing: border-box;
     `;
 
-    // Insert placeholder at original position
-    element.parentNode?.insertBefore(this._placeholder, element);
+    // Completely hide the original element (display:none removes from flow entirely)
+    element.style.display = 'none';
+
+    // Insert placeholder right after the hidden element
+    element.parentNode?.insertBefore(this._placeholder, element.nextSibling);
   }
 
   private _movePlaceholder(index: number): void {
     if (!this._placeholder || !this._container) return;
 
     const selector = this._snap?.options.draggableSelector ?? '[data-draggable]';
-    const activeElement = this._snap?.getActiveElement();
 
     const items = Array.from(
       this._container.querySelectorAll<HTMLElement>(selector)
-    ).filter((el) => el !== activeElement);
+    ).filter((el) => el !== this._draggedElement);
 
     // Remove placeholder from current position
     this._placeholder.remove();
@@ -211,11 +216,10 @@ export class Sortable implements Plugin {
     if (!this._container) return;
 
     const selector = this._snap?.options.draggableSelector ?? '[data-draggable]';
-    const activeElement = this._snap?.getActiveElement();
 
     const items = Array.from(
       this._container.querySelectorAll<HTMLElement>(selector)
-    ).filter((el) => el !== activeElement && el !== this._placeholder);
+    ).filter((el) => el !== this._draggedElement && el !== this._placeholder);
 
     // Get positions before
     const positions = new Map<HTMLElement, DOMRect>();
@@ -249,17 +253,22 @@ export class Sortable implements Plugin {
   }
 
   private _cleanup(): void {
+    // Restore element visibility
+    if (this._draggedElement) {
+      this._draggedElement.style.display = '';
+
+      // Remove ghost class
+      if (this._options.ghostClass) {
+        this._draggedElement.classList.remove(this._options.ghostClass);
+      }
+    }
+
     // Remove placeholder
     this._placeholder?.remove();
     this._placeholder = null;
 
-    // Remove ghost class from dragged element
-    const activeElement = this._snap?.getActiveElement();
-    if (activeElement && this._options.ghostClass) {
-      activeElement.classList.remove(this._options.ghostClass);
-    }
-
     // Reset state
+    this._draggedElement = null;
     this._container = null;
     this._items = [];
     this._originalIndex = -1;
