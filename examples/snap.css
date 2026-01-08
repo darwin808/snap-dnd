@@ -1,0 +1,116 @@
+/**
+ * Example CSS for Snap drag and drop library
+ * This file is NOT injected by the library - copy what you need
+ */
+
+/* ============================================
+   REQUIRED: Touch action for draggables
+   ============================================ */
+[data-draggable] {
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+}
+
+[data-draggable]:active {
+  cursor: grabbing;
+}
+
+/* ============================================
+   OPTIONAL: Dragging state
+   ============================================ */
+.snap-dragging {
+  opacity: 0.5;
+}
+
+/* Ghost element (cloned during drag) */
+.snap-ghost {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  transform: rotate(2deg);
+}
+
+/* ============================================
+   OPTIONAL: Drop zones
+   ============================================ */
+[data-droppable] {
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.snap-drop-active {
+  background-color: rgba(0, 120, 255, 0.1);
+  border-color: #0078ff;
+}
+
+/* ============================================
+   OPTIONAL: Sortable plugin
+   ============================================ */
+.snap-sortable-ghost {
+  opacity: 0.4;
+}
+
+.snap-sortable-placeholder {
+  background: rgba(0, 120, 255, 0.1);
+  border: 2px dashed #0078ff;
+  border-radius: 4px;
+}
+
+/* ============================================
+   OPTIONAL: Kanban plugin
+   ============================================ */
+.snap-kanban-target {
+  background-color: rgba(0, 200, 100, 0.1);
+}
+
+.snap-kanban-placeholder {
+  background: rgba(0, 0, 0, 0.05);
+  border: 2px dashed #ccc;
+  border-radius: 4px;
+}
+
+/* ============================================
+   OPTIONAL: File drop zones
+   ============================================ */
+[data-file-drop] {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.snap-file-drag-over {
+  border-color: #0078ff;
+  background-color: rgba(0, 120, 255, 0.05);
+}
+
+/* ============================================
+   OPTIONAL: Handle element
+   ============================================ */
+[data-drag-handle] {
+  cursor: grab;
+  user-select: none;
+}
+
+[data-drag-handle]:active {
+  cursor: grabbing;
+}
+
+/* ============================================
+   OPTIONAL: Axis-constrained elements
+   ============================================ */
+[data-drag-axis="x"] {
+  cursor: ew-resize;
+}
+
+[data-drag-axis="y"] {
+  cursor: ns-resize;
+}
+
+/* ============================================
+   OPTIONAL: Disabled state
+   ============================================ */
+[data-draggable][disabled],
+[data-draggable].disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

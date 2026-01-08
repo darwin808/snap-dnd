@@ -1,0 +1,54 @@
+{
+  "name": "snap-dnd",
+  "version": "0.1.0",
+  "description": "A zero-dependency, memory-optimized drag and drop library for vanilla JS and Web Components",
+  "type": "module",
+  "main": "./dist/snap.umd.js",
+  "module": "./dist/snap.esm.js",
+  "types": "./dist/snap.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/snap.esm.js",
+      "require": "./dist/snap.umd.js"
+    },
+    "./core": {
+      "import": "./dist/snap.core.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "npm run build:full && npm run build:core",
+    "build:full": "esbuild src/index.ts --bundle --format=esm --minify --sourcemap --outfile=dist/snap.esm.js && esbuild src/index.ts --bundle --format=iife --global-name=Snap --minify --sourcemap --outfile=dist/snap.umd.js",
+    "build:core": "esbuild src/core-only.ts --bundle --format=esm --minify --sourcemap --outfile=dist/snap.core.js",
+    "dev": "esbuild src/index.ts --bundle --format=esm --watch --outfile=dist/snap.esm.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "drag",
+    "drop",
+    "dnd",
+    "draggable",
+    "sortable",
+    "kanban",
+    "vanilla",
+    "web-components",
+    "lit"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.2"
+  }
+}
