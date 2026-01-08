@@ -1,0 +1,63 @@
+name: Bundle Size Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  size-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Check bundle sizes
+        run: |
+          # Size limits (in bytes)
+          MAX_CORE=6000      # 6KB gzipped
+          MAX_FULL=10000     # 10KB gzipped
+
+          # Get gzipped sizes
+          CORE_SIZE=$(gzip -c dist/snap.core.js | wc -c)
+          FULL_SIZE=$(gzip -c dist/snap.esm.js | wc -c)
+
+          echo "📦 Bundle Sizes (gzipped):"
+          echo "  Core: $(echo "scale=2; $CORE_SIZE/1024" | bc)KB ($CORE_SIZE bytes)"
+          echo "  Full: $(echo "scale=2; $FULL_SIZE/1024" | bc)KB ($FULL_SIZE bytes)"
+          echo ""
+          echo "📏 Limits:"
+          echo "  Core: $(echo "scale=2; $MAX_CORE/1024" | bc)KB"
+          echo "  Full: $(echo "scale=2; $MAX_FULL/1024" | bc)KB"
+
+          # Check limits
+          FAILED=0
+
+          if [ $CORE_SIZE -gt $MAX_CORE ]; then
+            echo "❌ Core bundle exceeds limit!"
+            FAILED=1
+          else
+            echo "✅ Core bundle OK"
+          fi
+
+          if [ $FULL_SIZE -gt $MAX_FULL ]; then
+            echo "❌ Full bundle exceeds limit!"
+            FAILED=1
+          else
+            echo "✅ Full bundle OK"
+          fi
+
+          exit $FAILED
