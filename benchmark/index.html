@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snap DnD Benchmark</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; padding: 20px; background: #1a1a2e; color: #eee; }
+    h1 { margin-bottom: 20px; }
+    .controls { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+    button { padding: 10px 20px; font-size: 14px; cursor: pointer; background: #4a4a6a; color: #fff; border: none; border-radius: 4px; }
+    button:hover { background: #5a5a7a; }
+    .results { background: #2a2a4a; padding: 20px; border-radius: 8px; margin-bottom: 20px; font-family: monospace; white-space: pre-wrap; }
+    .container { display: flex; gap: 20px; flex-wrap: wrap; }
+    .column { background: #2a2a4a; padding: 10px; border-radius: 8px; min-width: 200px; min-height: 400px; }
+    .item { background: #4a4a6a; padding: 10px; margin: 5px 0; border-radius: 4px; cursor: grab; user-select: none; touch-action: none; }
+    .item:active { cursor: grabbing; }
+    .snap-dragging { opacity: 0.5; }
+    .snap-ghost { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+  </style>
+</head>
+<body>
+  <h1>Snap DnD Benchmark</h1>
+
+  <div class="controls">
+    <button onclick="runMemoryTest()">Memory Test (100,000 items)</button>
+    <button onclick="runInitTest()">Init Speed Test</button>
+    <button onclick="runDragSimulation()">Drag Simulation (100 ops)</button>
+    <button onclick="clearResults()">Clear</button>
+  </div>
+
+  <div class="results" id="results">Click a test to run benchmarks...</div>
+
+  <div class="container" id="container">
+    <div class="column" data-droppable>
+      <div class="item" data-draggable>Item 1</div>
+      <div class="item" data-draggable>Item 2</div>
+      <div class="item" data-draggable>Item 3</div>
+    </div>
+    <div class="column" data-droppable>
+      <div class="item" data-draggable>Item 4</div>
+      <div class="item" data-draggable>Item 5</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { Snap, Sortable } from '../dist/snap.esm.js';
+
+    const results = document.getElementById('results');
+    const container = document.getElementById('container');
+
+    let snap = new Snap(container, {
+      onDrop: (e) => console.log('Drop:', e.insertionIndex)
+    }).use(new Sortable());
+
+    function log(msg) {
+      results.textContent += msg + '\n';
+      console.log(msg);
+    }
+
+    function clearResults() {
+      results.textContent = '';
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    // Memory test - create many items
+    window.runMemoryTest = async function() {
+      log('\n=== Memory Test ===');
+
+      // Force GC if available
+      if (window.gc) window.gc();
+
+      const before = performance.memory?.usedJSHeapSize || 0;
+
+      // Destroy existing
+      snap.destroy();
+      container.innerHTML = '';
+
+      // Create 100,000 items
+      const col = document.createElement('div');
+      col.className = 'column';
+      col.setAttribute('data-droppable', '');
+
+      const start = performance.now();
+      const fragment = document.createDocumentFragment();
+
+      for (let i = 0; i < 100000; i++) {
+        const item = document.createElement('div');
+        item.className = 'item';
+        item.setAttribute('data-draggable', '');
+        item.textContent = `Item ${i + 1}`;
+        fragment.appendChild(item);
+      }
+      col.appendChild(fragment);
+
+      container.appendChild(col);
+
+      // Reinitialize Snap
+      snap = new Snap(container, {
+        onDrop: (e) => console.log('Drop:', e.insertionIndex)
+      }).use(new Sortable());
+
+      const initTime = performance.now() - start;
+
+      // Check memory after
+      await new Promise(r => setTimeout(r, 100));
+      const after = performance.memory?.usedJSHeapSize || 0;
+
+      log(`Items created: 100,000`);
+      log(`Init time: ${initTime.toFixed(2)}ms`);
+
+      if (before && after) {
+        log(`Memory before: ${formatBytes(before)}`);
+        log(`Memory after: ${formatBytes(after)}`);
+        log(`Memory delta: ${formatBytes(after - before)}`);
+        log(`Per-item overhead: ~${((after - before) / 100000).toFixed(0)} bytes`);
+      } else {
+        log('(Memory API not available - run Chrome with --enable-precise-memory-info)');
+      }
+    };
+
+    // Init speed test
+    window.runInitTest = function() {
+      log('\n=== Init Speed Test (100 iterations) ===');
+
+      const times = [];
+
+      for (let i = 0; i < 100; i++) {
+        snap.destroy();
+
+        const start = performance.now();
+        snap = new Snap(container, {
+          onDrop: () => {}
+        }).use(new Sortable());
+        times.push(performance.now() - start);
+      }
+
+      const avg = times.reduce((a, b) => a + b, 0) / times.length;
+      const min = Math.min(...times);
+      const max = Math.max(...times);
+
+      log(`Average init: ${avg.toFixed(3)}ms`);
+      log(`Min: ${min.toFixed(3)}ms`);
+      log(`Max: ${max.toFixed(3)}ms`);
+      log(`Ops/sec: ${(1000 / avg).toFixed(0)}`);
+    };
+
+    // Simulate drag operations
+    window.runDragSimulation = function() {
+      log('\n=== Drag Event Simulation (100 ops) ===');
+
+      const items = container.querySelectorAll('.item');
+      if (items.length === 0) {
+        log('No items to test. Run memory test first.');
+        return;
+      }
+
+      const start = performance.now();
+
+      // Simulate 100 pointer events
+      for (let i = 0; i < 100; i++) {
+        const item = items[i % items.length];
+        const rect = item.getBoundingClientRect();
+
+        // Simulate pointerdown
+        item.dispatchEvent(new PointerEvent('pointerdown', {
+          bubbles: true,
+          clientX: rect.left + 10,
+          clientY: rect.top + 10,
+          pointerId: 1,
+          isPrimary: true,
+          button: 0
+        }));
+
+        // Simulate pointermove
+        for (let j = 0; j < 5; j++) {
+          document.dispatchEvent(new PointerEvent('pointermove', {
+            bubbles: true,
+            clientX: rect.left + 10 + j * 10,
+            clientY: rect.top + 10 + j * 10,
+            pointerId: 1,
+            isPrimary: true
+          }));
+        }
+
+        // Simulate pointerup
+        document.dispatchEvent(new PointerEvent('pointerup', {
+          bubbles: true,
+          clientX: rect.left + 60,
+          clientY: rect.top + 60,
+          pointerId: 1,
+          isPrimary: true
+        }));
+      }
+
+      const elapsed = performance.now() - start;
+
+      log(`100 drag operations: ${elapsed.toFixed(2)}ms`);
+      log(`Per operation: ${(elapsed / 100).toFixed(3)}ms`);
+      log(`Ops/sec: ${(100000 / elapsed).toFixed(0)}`);
+    };
+
+    window.clearResults = clearResults;
+  </script>
+</body>
+</html>
