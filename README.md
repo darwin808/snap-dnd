@@ -198,6 +198,51 @@ const snap = new Snap(board).use(new Kanban({
 }));
 ```
 
+### Nested Sortable (Grid Layout)
+
+Create nested sortable layouts where sections move vertically and items move horizontally:
+
+```
+┌─────────────────────────┐
+│ [1] [2] [3]  ← horizontal │  ← Section 1 (vertical)
+├─────────────────────────┤
+│ [4] [5] [6]  ← horizontal │  ← Section 2 (vertical)
+├─────────────────────────┤
+│ [7] [8] [9]  ← horizontal │  ← Section 3 (vertical)
+└─────────────────────────┘
+```
+
+```html
+<div id="board">
+  <div class="section" data-draggable data-drag-axis="y" data-droppable>
+    <div class="item" data-draggable data-drag-axis="x">1</div>
+    <div class="item" data-draggable data-drag-axis="x">2</div>
+    <div class="item" data-draggable data-drag-axis="x">3</div>
+  </div>
+  <div class="section" data-draggable data-drag-axis="y" data-droppable>
+    <div class="item" data-draggable data-drag-axis="x">4</div>
+    <div class="item" data-draggable data-drag-axis="x">5</div>
+    <div class="item" data-draggable data-drag-axis="x">6</div>
+  </div>
+  <div class="section" data-draggable data-drag-axis="y" data-droppable>
+    <div class="item" data-draggable data-drag-axis="x">7</div>
+    <div class="item" data-draggable data-drag-axis="x">8</div>
+    <div class="item" data-draggable data-drag-axis="x">9</div>
+  </div>
+</div>
+```
+
+```javascript
+import { Snap, Sortable } from 'snap-dnd';
+
+const snap = new Snap(document.getElementById('board'), {
+  onDrop: (e) => {
+    const isSection = e.element.classList.contains('section');
+    console.log(isSection ? 'Section' : 'Item', 'moved to index:', e.insertionIndex);
+  }
+}).use(new Sortable());
+```
+
 ### FileDrop
 
 Handle file drops from desktop:
