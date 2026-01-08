@@ -174,6 +174,8 @@ export interface SnapOptions {
   autoRefresh?: boolean;
   ghostClass?: string;
   placeholderClass?: string;
+  /** Disable RAF throttling for snappier feel (may impact performance with many items) */
+  throttle?: boolean;
 }
 
 // Internal state events

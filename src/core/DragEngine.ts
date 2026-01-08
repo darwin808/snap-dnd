@@ -53,6 +53,7 @@ export class DragEngine {
       handleSelector: this._options.handleSelector,
       delay: this._options.delay,
       distance: this._options.distance,
+      throttle: this._options.throttle,
     });
 
     this._setupListeners();
@@ -276,7 +277,7 @@ export class DragEngine {
   private _createGhost(element: HTMLElement, position: Point): void {
     const rect = element.getBoundingClientRect();
 
-    // Calculate offset from cursor to element origin
+    // Store offset from cursor to element's top-left corner
     this._ghostOffset = {
       x: position.x - rect.left,
       y: position.y - rect.top,
@@ -286,8 +287,8 @@ export class DragEngine {
     this._ghost = element.cloneNode(true) as HTMLElement;
     this._ghost.style.cssText = `
       position: fixed;
-      left: ${rect.left}px;
-      top: ${rect.top}px;
+      left: 0;
+      top: 0;
       width: ${rect.width}px;
       height: ${rect.height}px;
       margin: 0;
@@ -298,6 +299,9 @@ export class DragEngine {
     `;
     this._ghost.classList.add('snap-ghost');
 
+    // Position ghost at element's current location
+    this._ghost.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
+
     // Append to body (not container, to avoid transform issues)
     document.body.appendChild(this._ghost);
   }
@@ -305,11 +309,11 @@ export class DragEngine {
   private _updateGhost(position: Point): void {
     if (!this._ghost) return;
 
+    // Ghost follows cursor, maintaining the original click offset
     const x = position.x - this._ghostOffset.x;
     const y = position.y - this._ghostOffset.y;
 
-    // Use transform for better performance
-    this._ghost.style.transform = `translate(${x - parseFloat(this._ghost.style.left)}px, ${y - parseFloat(this._ghost.style.top)}px)`;
+    this._ghost.style.transform = `translate(${x}px, ${y}px)`;
   }
 
   private _removeGhost(): void {

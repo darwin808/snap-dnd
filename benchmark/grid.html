@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snap DnD - Nested Grid Layout</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 40px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #eee;
+      min-height: 100vh;
+    }
+    h1 { margin-bottom: 10px; }
+    p { color: #888; margin-bottom: 30px; }
+
+    .board {
+      max-width: 600px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    /* Sections - draggable vertically */
+    .section {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 15px;
+      margin: 10px 0;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .section:hover {
+      background: rgba(255,255,255,0.08);
+    }
+
+    .section-header {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 10px;
+      pointer-events: none;
+    }
+
+    .section-items {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* Items - draggable horizontally */
+    .item {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #6c63ff 0%, #4a4a8a 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+      box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .item:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(108, 99, 255, 0.4);
+    }
+
+    /* Dragging states */
+    body.is-dragging .item,
+    body.is-dragging .section {
+      transition: none !important;
+    }
+
+    .snap-dragging {
+      opacity: 0 !important;
+      visibility: hidden !important;
+    }
+
+    .snap-ghost {
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4) !important;
+      z-index: 10000 !important;
+    }
+
+    .snap-sortable-placeholder {
+      background: rgba(108, 99, 255, 0.1) !important;
+      border: 2px dashed rgba(108, 99, 255, 0.3) !important;
+      border-radius: 12px;
+    }
+
+    /* Section placeholder */
+    .section.snap-sortable-placeholder {
+      height: 120px;
+      margin: 10px 0;
+    }
+
+    /* Item placeholder */
+    .item.snap-sortable-placeholder {
+      width: 80px;
+      height: 80px;
+    }
+
+    .drop-active {
+      box-shadow: inset 0 0 0 2px rgba(108, 99, 255, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <h1>Nested Grid Layout</h1>
+  <p>Sections move vertically ↕ | Items move horizontally ↔</p>
+
+  <div class="board" id="board">
+    <div class="section" data-draggable data-drag-axis="y" data-droppable>
+      <div class="section-header">Section 1</div>
+      <div class="section-items">
+        <div class="item" data-draggable data-drag-axis="x">1</div>
+        <div class="item" data-draggable data-drag-axis="x">2</div>
+        <div class="item" data-draggable data-drag-axis="x">3</div>
+      </div>
+    </div>
+
+    <div class="section" data-draggable data-drag-axis="y" data-droppable>
+      <div class="section-header">Section 2</div>
+      <div class="section-items">
+        <div class="item" data-draggable data-drag-axis="x">4</div>
+        <div class="item" data-draggable data-drag-axis="x">5</div>
+        <div class="item" data-draggable data-drag-axis="x">6</div>
+      </div>
+    </div>
+
+    <div class="section" data-draggable data-drag-axis="y" data-droppable>
+      <div class="section-header">Section 3</div>
+      <div class="section-items">
+        <div class="item" data-draggable data-drag-axis="x">7</div>
+        <div class="item" data-draggable data-drag-axis="x">8</div>
+        <div class="item" data-draggable data-drag-axis="x">9</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { Snap, Sortable } from '../dist/snap.esm.js';
+
+    const board = document.getElementById('board');
+
+    const snap = new Snap(board, {
+      throttle: false,
+      distance: 3,
+      onDragStart: (e) => {
+        document.body.classList.add('is-dragging');
+      },
+      onDrop: (e) => {
+        const { element, dropZone, insertionIndex } = e;
+
+        // Determine if it's a section or item
+        const isSection = element.classList.contains('section');
+        const container = isSection ? board : element.closest('.section-items');
+
+        if (container && insertionIndex !== undefined) {
+          const selector = isSection ? '.section' : '.item';
+          const items = container.querySelectorAll(selector);
+
+          if (insertionIndex >= items.length) {
+            container.appendChild(element);
+          } else {
+            container.insertBefore(element, items[insertionIndex]);
+          }
+        }
+      },
+      onDragEnd: () => {
+        document.body.classList.remove('is-dragging');
+      }
+    }).use(new Sortable({ animation: 150 }));
+  </script>
+</body>
+</html>

@@ -40,6 +40,8 @@ export interface PointerSensorOptions {
   handleSelector?: string;
   delay?: number;
   distance?: number;
+  /** Disable RAF throttling for snappier feel (default: true) */
+  throttle?: boolean;
 }
 
 export class PointerSensor
@@ -170,8 +172,12 @@ export class PointerSensor
   private _onPointerMove = (e: PointerEvent): void => {
     if (e.pointerId !== this._activePointerId) return;
 
-    // Queue for RAF processing
-    this._moveThrottle.queue(e);
+    // Process immediately or queue for RAF
+    if (this._options.throttle === false) {
+      this._processMove(e);
+    } else {
+      this._moveThrottle.queue(e);
+    }
   };
 
   private _processMove = (e: PointerEvent): void => {
