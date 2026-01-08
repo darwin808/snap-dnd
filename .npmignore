@@ -1,0 +1,9 @@
+# Source maps (large, not needed for most users)
+*.map
+
+# Source files
+src/
+
+# Config files
+tsconfig.json
+.github/

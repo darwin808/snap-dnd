@@ -1,6 +1,6 @@
 {
   "name": "snap-dnd",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A zero-dependency, memory-optimized drag and drop library for vanilla JS and Web Components",
   "type": "module",
   "main": "./dist/snap.umd.js",
@@ -16,7 +16,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist/**/*.js",
+    "dist/**/*.d.ts"
   ],
   "sideEffects": false,
   "scripts": {
