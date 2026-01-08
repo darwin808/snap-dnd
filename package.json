@@ -1,6 +1,6 @@
 {
   "name": "snap-dnd",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "A zero-dependency, memory-optimized drag and drop library for vanilla JS and Web Components",
   "type": "module",
   "main": "./dist/snap.esm.js",

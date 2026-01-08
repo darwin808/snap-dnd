@@ -111,29 +111,32 @@ export class DragEngine {
     // Start drag session
     const session = this._state.startDrag(element, position, data);
 
-    // Call user callback
+    // Create ghost element FIRST (before removing original from flow)
+    this._createGhost(element, position);
+
+    // Add dragging class BEFORE callback - removes element from document flow
+    // This prevents layout shift when Sortable plugin inserts placeholder
+    element.classList.add('snap-dragging');
+    if (this._options.ghostClass) {
+      element.classList.add(this._options.ghostClass);
+    }
+
+    // Call user callback AFTER element is out of flow
     const startEvent = {
       element,
       position: { x: position.x, y: position.y },
       data: session.data,
       cancel: () => {
         this._state.cancelDrag();
+        this._cleanup(element);
       },
     };
 
     const result = this._options.onDragStart?.(startEvent);
     if (result === false) {
       this._state.cancelDrag();
+      this._cleanup(element);
       return;
-    }
-
-    // Create ghost element
-    this._createGhost(element, position);
-
-    // Add dragging class
-    element.classList.add('snap-dragging');
-    if (this._options.ghostClass) {
-      element.classList.add(this._options.ghostClass);
     }
 
     // Invalidate bounds cache (positions may change)
