@@ -32,6 +32,7 @@ export class DragEngine {
 
   private _pointerSensor: PointerSensor;
   private _enabled = false;
+  private _listenerUnsubscribers: (() => void)[] = [];
 
   // Ghost element for visual feedback
   private _ghost: HTMLElement | null = null;
@@ -92,10 +93,12 @@ export class DragEngine {
   }
 
   private _setupListeners(): void {
-    this._pointerSensor.on('pointerdown', this._onPointerDown);
-    this._pointerSensor.on('pointermove', this._onPointerMove);
-    this._pointerSensor.on('pointerup', this._onPointerUp);
-    this._pointerSensor.on('pointercancel', this._onPointerCancel);
+    this._listenerUnsubscribers.push(
+      this._pointerSensor.on('pointerdown', this._onPointerDown),
+      this._pointerSensor.on('pointermove', this._onPointerMove),
+      this._pointerSensor.on('pointerup', this._onPointerUp),
+      this._pointerSensor.on('pointercancel', this._onPointerCancel)
+    );
   }
 
   private _onPointerDown = (event: PointerStartEvent): void => {
@@ -349,6 +352,13 @@ export class DragEngine {
    */
   destroy(): void {
     this.disable();
+
+    // Unsubscribe from pointer sensor events
+    for (const unsub of this._listenerUnsubscribers) {
+      unsub();
+    }
+    this._listenerUnsubscribers = [];
+
     this._pointerSensor.destroy();
   }
 }

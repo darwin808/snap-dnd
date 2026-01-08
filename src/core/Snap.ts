@@ -39,9 +39,13 @@ export class Snap implements SnapInstance {
   private _plugins: Plugin[] = [];
   private _behaviors: Behavior[] = [];
 
+  // State listener unsubscribers
+  private _stateUnsubscribers: (() => void)[] = [];
+
   // MutationObserver for auto-refresh
   private _observer: MutationObserver | null = null;
   private _refreshScheduled = false;
+  private _destroyed = false;
 
   // Scroll/resize handlers
   private _scrollHandler: (() => void) | null = null;
@@ -110,7 +114,14 @@ export class Snap implements SnapInstance {
    * Cleanup and destroy instance
    */
   destroy(): void {
+    this._destroyed = true;
     this.disable();
+
+    // Unsubscribe from state listeners
+    for (const unsub of this._stateUnsubscribers) {
+      unsub();
+    }
+    this._stateUnsubscribers = [];
 
     // Destroy plugins
     for (const plugin of this._plugins) {
@@ -278,28 +289,37 @@ export class Snap implements SnapInstance {
   }
 
   private _setupStateListeners(): void {
-    // Forward state events to behaviors
-    this._state.subscribe('dragstart', (session) => {
-      for (const behavior of this._behaviors) {
-        behavior.onDragStart?.(session);
-      }
-    });
+    // Forward state events to behaviors, store unsubscribers for cleanup
+    this._stateUnsubscribers.push(
+      this._state.subscribe('dragstart', (session) => {
+        for (const behavior of this._behaviors) {
+          behavior.onDragStart?.(session);
+        }
+      })
+    );
 
-    this._state.subscribe('dragmove', (session) => {
-      for (const behavior of this._behaviors) {
-        behavior.onDragMove?.(session);
-      }
-    });
+    this._stateUnsubscribers.push(
+      this._state.subscribe('dragmove', (session) => {
+        for (const behavior of this._behaviors) {
+          behavior.onDragMove?.(session);
+        }
+      })
+    );
 
-    this._state.subscribe('dragend', (session) => {
-      for (const behavior of this._behaviors) {
-        behavior.onDragEnd?.(session);
-      }
-    });
+    this._stateUnsubscribers.push(
+      this._state.subscribe('dragend', (session) => {
+        for (const behavior of this._behaviors) {
+          behavior.onDragEnd?.(session);
+        }
+      })
+    );
   }
 
   private _setupAutoRefresh(): void {
     this._observer = new MutationObserver((mutations) => {
+      // Guard against destroyed instance
+      if (this._destroyed) return;
+
       let needsRefresh = false;
 
       for (const mutation of mutations) {
@@ -313,6 +333,8 @@ export class Snap implements SnapInstance {
         this._refreshScheduled = true;
         // Debounce refresh
         requestAnimationFrame(() => {
+          // Guard against destroyed instance in RAF callback
+          if (this._destroyed) return;
           this._refreshScheduled = false;
           this.refresh();
         });
