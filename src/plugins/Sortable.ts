@@ -85,8 +85,9 @@ export class Sortable implements Plugin {
     if (!this._container) return;
 
     const selector = this._snap?.options.draggableSelector ?? '[data-draggable]';
+    // Only get direct children that match the selector (not nested draggables)
     this._items = Array.from(
-      this._container.querySelectorAll<HTMLElement>(selector)
+      this._container.querySelectorAll<HTMLElement>(`:scope > ${selector}`)
     );
 
     this._originalIndex = this._items.indexOf(element);
@@ -108,9 +109,9 @@ export class Sortable implements Plugin {
 
     const selector = this._snap?.options.draggableSelector ?? '[data-draggable]';
 
-    // Get current items (excluding the dragged element and placeholder)
+    // Get current items (direct children only, excluding the dragged element and placeholder)
     const items = Array.from(
-      this._container.querySelectorAll<HTMLElement>(selector)
+      this._container.querySelectorAll<HTMLElement>(`:scope > ${selector}`)
     ).filter((el) => el !== this._draggedElement && el !== this._placeholder);
 
     if (items.length === 0) {
@@ -161,13 +162,14 @@ export class Sortable implements Plugin {
 
   private _createPlaceholder(element: HTMLElement): void {
     const rect = element.getBoundingClientRect();
+    const computedStyle = window.getComputedStyle(element);
 
     this._placeholder = document.createElement('div');
     this._placeholder.className = this._options.placeholderClass ?? '';
     this._placeholder.style.cssText = `
       width: ${rect.width}px;
       height: ${rect.height}px;
-      margin: 0;
+      margin: ${computedStyle.margin};
       box-sizing: border-box;
     `;
 
@@ -183,8 +185,9 @@ export class Sortable implements Plugin {
 
     const selector = this._snap?.options.draggableSelector ?? '[data-draggable]';
 
+    // Direct children only
     const items = Array.from(
-      this._container.querySelectorAll<HTMLElement>(selector)
+      this._container.querySelectorAll<HTMLElement>(`:scope > ${selector}`)
     ).filter((el) => el !== this._draggedElement);
 
     // Remove placeholder from current position
@@ -217,8 +220,9 @@ export class Sortable implements Plugin {
 
     const selector = this._snap?.options.draggableSelector ?? '[data-draggable]';
 
+    // Direct children only
     const items = Array.from(
-      this._container.querySelectorAll<HTMLElement>(selector)
+      this._container.querySelectorAll<HTMLElement>(`:scope > ${selector}`)
     ).filter((el) => el !== this._draggedElement && el !== this._placeholder);
 
     // Get positions before
@@ -253,6 +257,12 @@ export class Sortable implements Plugin {
   }
 
   private _cleanup(): void {
+    // Move element to placeholder position (auto-sort)
+    if (this._draggedElement && this._placeholder && this._placeholder.parentNode) {
+      // Insert element where placeholder is
+      this._placeholder.parentNode.insertBefore(this._draggedElement, this._placeholder);
+    }
+
     // Restore element visibility
     if (this._draggedElement) {
       this._draggedElement.style.display = '';
