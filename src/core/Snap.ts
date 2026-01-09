@@ -10,6 +10,9 @@ import type {
   Axis,
   Plugin,
   Behavior,
+  SnapEventMap,
+  SnapEventName,
+  Unsubscribe,
 } from '../types/index.js';
 import { DragState } from './DragState.js';
 import { DragEngine } from './DragEngine.js';
@@ -39,6 +42,9 @@ export class Snap implements SnapInstance {
   private _plugins: Plugin[] = [];
   private _behaviors: Behavior[] = [];
 
+  // Event listeners for on/off API
+  private _eventListeners: Map<SnapEventName, Set<(e: unknown) => void>> = new Map();
+
   // State listener unsubscribers
   private _stateUnsubscribers: (() => void)[] = [];
 
@@ -57,6 +63,9 @@ export class Snap implements SnapInstance {
   ) {
     this._container = container;
     this._options = { ...defaultOptions, ...options };
+
+    // Wrap callbacks to emit events
+    this._wrapCallbacks();
 
     // Initialize subsystems
     this._state = new DragState();
@@ -234,6 +243,80 @@ export class Snap implements SnapInstance {
   setOptions(options: Partial<SnapOptions>): void {
     Object.assign(this._options, options);
     this._engine.updateOptions(this._options);
+  }
+
+  /**
+   * Subscribe to an event
+   */
+  on<K extends SnapEventName>(
+    event: K,
+    callback: (e: SnapEventMap[K]) => void
+  ): Unsubscribe {
+    if (!this._eventListeners.has(event)) {
+      this._eventListeners.set(event, new Set());
+    }
+    this._eventListeners.get(event)!.add(callback as (e: unknown) => void);
+
+    return () => this.off(event, callback);
+  }
+
+  /**
+   * Unsubscribe from an event
+   */
+  off<K extends SnapEventName>(
+    event: K,
+    callback: (e: SnapEventMap[K]) => void
+  ): void {
+    this._eventListeners.get(event)?.delete(callback as (e: unknown) => void);
+  }
+
+  /**
+   * Emit an event to all listeners
+   */
+  private _emit<K extends SnapEventName>(event: K, data: SnapEventMap[K]): void {
+    const listeners = this._eventListeners.get(event);
+    if (listeners) {
+      for (const callback of listeners) {
+        callback(data);
+      }
+    }
+  }
+
+  /**
+   * Wrap user callbacks to also emit events through on/off system
+   */
+  private _wrapCallbacks(): void {
+    const userCallbacks = { ...this._options };
+
+    this._options.onDragStart = (e) => {
+      this._emit('dragstart', e);
+      return userCallbacks.onDragStart?.(e);
+    };
+
+    this._options.onDragMove = (e) => {
+      this._emit('dragmove', e);
+      userCallbacks.onDragMove?.(e);
+    };
+
+    this._options.onDragEnd = (e) => {
+      this._emit('dragend', e);
+      userCallbacks.onDragEnd?.(e);
+    };
+
+    this._options.onDrop = (e) => {
+      this._emit('drop', e);
+      userCallbacks.onDrop?.(e);
+    };
+
+    this._options.onDropZoneEnter = (e) => {
+      this._emit('dropzoneenter', e);
+      userCallbacks.onDropZoneEnter?.(e);
+    };
+
+    this._options.onDropZoneLeave = (e) => {
+      this._emit('dropzoneleave', e);
+      userCallbacks.onDropZoneLeave?.(e);
+    };
   }
 
   // Internal methods

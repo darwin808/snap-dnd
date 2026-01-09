@@ -93,6 +93,8 @@ export type {
   DropZoneEnterEvent,
   DropZoneLeaveEvent,
   FileDropEvent,
+  SnapEventMap,
+  SnapEventName,
 
   // Options types
   SnapOptions,

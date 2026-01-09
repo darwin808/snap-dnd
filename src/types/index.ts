@@ -209,6 +209,18 @@ export interface Behavior {
   destroy(): void;
 }
 
+// Event listener types
+export interface SnapEventMap {
+  dragstart: DragStartEvent;
+  dragmove: DragMoveEvent;
+  dragend: DragEndEvent;
+  drop: DropEvent;
+  dropzoneenter: DropZoneEnterEvent;
+  dropzoneleave: DropZoneLeaveEvent;
+}
+
+export type SnapEventName = keyof SnapEventMap;
+
 // Public Snap instance interface
 export interface SnapInstance {
   readonly options: SnapOptions;
@@ -223,4 +235,6 @@ export interface SnapInstance {
   removeDropZone(element: HTMLElement): void;
   isDragging(): boolean;
   getActiveElement(): HTMLElement | null;
+  on<K extends SnapEventName>(event: K, callback: (e: SnapEventMap[K]) => void): Unsubscribe;
+  off<K extends SnapEventName>(event: K, callback: (e: SnapEventMap[K]) => void): void;
 }
