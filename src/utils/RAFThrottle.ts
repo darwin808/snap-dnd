@@ -39,9 +39,9 @@ export class RAFThrottle<T> {
    */
   flush(): void {
     if (this._pending !== null) {
+      const data = this._pending;
       this.cancel();
-      this._callback(this._pending);
-      this._pending = null;
+      this._callback(data);
     }
   }
 
