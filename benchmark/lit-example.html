@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snap DnD - Lit Web Component Example</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 40px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #eee;
+      min-height: 100vh;
+    }
+    h1 { margin-bottom: 10px; }
+    p { color: #888; margin-bottom: 30px; }
+    .event-log {
+      background: rgba(0,0,0,0.3);
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .event-log div {
+      padding: 2px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1>Lit Web Component Example</h1>
+  <p>All elements are Lit components with Shadow DOM</p>
+
+  <grid-board></grid-board>
+
+  <div class="event-log" id="log"></div>
+
+  <!-- Lit from CDN -->
+  <script type="module">
+    import { LitElement, html, css } from 'https://esm.sh/lit@3.1.0';
+    import { Snap, Sortable } from '../dist/snap.esm.js';
+
+    const log = document.getElementById('log');
+    function logEvent(msg) {
+      const div = document.createElement('div');
+      div.textContent = `${new Date().toLocaleTimeString()} - ${msg}`;
+      log.insertBefore(div, log.firstChild);
+      if (log.children.length > 50) log.lastChild.remove();
+    }
+
+    // Helper to deeply clone element with all Shadow DOM content
+    function renderShadowGhost(element) {
+      const ghost = deepCloneWithShadow(element);
+      return ghost;
+    }
+
+    // Recursively clone element including shadow DOM
+    function deepCloneWithShadow(element) {
+      const clone = document.createElement('div');
+      const rect = element.getBoundingClientRect();
+
+      // Copy all computed styles from host element
+      const computed = window.getComputedStyle(element);
+      const stylesToCopy = [
+        'background', 'backgroundColor', 'backgroundImage',
+        'border', 'borderRadius', 'boxShadow',
+        'color', 'fontSize', 'fontWeight', 'fontFamily',
+        'display', 'alignItems', 'justifyContent', 'flexDirection',
+        'padding', 'margin', 'gap',
+        'width', 'height', 'minWidth', 'minHeight'
+      ];
+
+      for (const prop of stylesToCopy) {
+        clone.style[prop] = computed[prop];
+      }
+
+      // Set explicit dimensions
+      clone.style.width = rect.width + 'px';
+      clone.style.height = rect.height + 'px';
+      clone.style.boxSizing = 'border-box';
+
+      // If element has shadow root, clone its content
+      if (element.shadowRoot) {
+        // Clone each child in shadow root (use childNodes to get text nodes too)
+        for (const child of element.shadowRoot.childNodes) {
+          if (child.nodeType === Node.TEXT_NODE) {
+            const text = child.textContent.trim();
+            if (text) {
+              clone.appendChild(document.createTextNode(text));
+            }
+          } else if (child instanceof HTMLElement) {
+            if (child.tagName === 'STYLE') continue;
+            clone.appendChild(cloneNode(child));
+          }
+        }
+      } else {
+        // Regular element, clone children
+        for (const child of element.childNodes) {
+          if (child.nodeType === Node.TEXT_NODE) {
+            clone.appendChild(document.createTextNode(child.textContent));
+          } else if (child instanceof HTMLElement) {
+            clone.appendChild(cloneNode(child));
+          }
+        }
+      }
+
+      return clone;
+    }
+
+    // Clone a node, handling custom elements specially
+    function cloneNode(node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.cloneNode(true);
+      }
+
+      if (!(node instanceof HTMLElement)) {
+        return node.cloneNode(true);
+      }
+
+      const clone = document.createElement('div');
+      const rect = node.getBoundingClientRect();
+      const computed = window.getComputedStyle(node);
+
+      // Copy computed styles
+      const stylesToCopy = [
+        'background', 'backgroundColor', 'backgroundImage',
+        'border', 'borderRadius', 'boxShadow',
+        'color', 'fontSize', 'fontWeight', 'fontFamily',
+        'display', 'alignItems', 'justifyContent', 'flexDirection',
+        'padding', 'margin', 'gap', 'textAlign',
+        'width', 'height'
+      ];
+
+      for (const prop of stylesToCopy) {
+        clone.style[prop] = computed[prop];
+      }
+
+      // Set explicit dimensions for custom elements
+      if (node.tagName.includes('-')) {
+        clone.style.width = rect.width + 'px';
+        clone.style.height = rect.height + 'px';
+      }
+      clone.style.boxSizing = 'border-box';
+
+      // Handle custom elements with shadow DOM
+      if (node.shadowRoot) {
+        for (const child of node.shadowRoot.children) {
+          if (child.tagName === 'STYLE') continue;
+          clone.appendChild(cloneNode(child));
+        }
+      } else {
+        // Regular element
+        for (const child of node.childNodes) {
+          if (child.nodeType === Node.TEXT_NODE) {
+            clone.appendChild(document.createTextNode(child.textContent));
+          } else if (child instanceof HTMLElement) {
+            clone.appendChild(cloneNode(child));
+          }
+        }
+      }
+
+      return clone;
+    }
+
+    // Grid Item Component
+    class GridItem extends LitElement {
+      static styles = css`
+        :host {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 80px;
+          height: 80px;
+          background: linear-gradient(135deg, #6c63ff 0%, #4a4a8a 100%);
+          border-radius: 12px;
+          font-size: 24px;
+          font-weight: bold;
+          cursor: grab;
+          user-select: none;
+          touch-action: none;
+          box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+        }
+        :host(:hover) {
+          transform: translateY(-3px);
+          box-shadow: 0 8px 25px rgba(108, 99, 255, 0.4);
+        }
+        :host([dragging]) {
+          opacity: 0;
+        }
+      `;
+
+      static properties = {
+        value: { type: Number }
+      };
+
+      render() {
+        return html`${this.value}`;
+      }
+    }
+    customElements.define('grid-item', GridItem);
+
+    // Grid Section Component
+    class GridSection extends LitElement {
+      static styles = css`
+        :host {
+          display: block;
+          background: rgba(255,255,255,0.05);
+          border-radius: 12px;
+          padding: 15px;
+          margin: 10px 0;
+          cursor: grab;
+          user-select: none;
+          touch-action: none;
+          border: 1px solid rgba(255,255,255,0.1);
+        }
+        :host(:hover) {
+          background: rgba(255,255,255,0.08);
+        }
+        :host([dragging]) {
+          opacity: 0;
+        }
+        .header {
+          font-size: 12px;
+          color: #666;
+          margin-bottom: 10px;
+          pointer-events: none;
+        }
+        .items {
+          display: flex;
+          gap: 10px;
+        }
+      `;
+
+      static properties = {
+        sectionId: { type: Number, attribute: 'section-id' },
+        items: { type: Array }
+      };
+
+      constructor() {
+        super();
+        this.items = [];
+      }
+
+      render() {
+        return html`
+          <div class="header">Section ${this.sectionId}</div>
+          <div class="items">
+            ${this.items.map(item => html`
+              <grid-item
+                .value=${item}
+                data-draggable
+                data-drag-axis="x"
+              ></grid-item>
+            `)}
+          </div>
+        `;
+      }
+    }
+    customElements.define('grid-section', GridSection);
+
+    // Main Board Component
+    class GridBoard extends LitElement {
+      static styles = css`
+        :host {
+          display: block;
+        }
+        .board {
+          max-width: 600px;
+          background: rgba(255,255,255,0.03);
+          border-radius: 16px;
+          padding: 20px;
+        }
+        .snap-sortable-placeholder {
+          background: rgba(108, 99, 255, 0.1) !important;
+          border: 2px dashed rgba(108, 99, 255, 0.3) !important;
+          border-radius: 12px;
+        }
+      `;
+
+      static properties = {
+        sections: { type: Array }
+      };
+
+      constructor() {
+        super();
+        this.sections = [
+          { id: 1, items: [1, 2, 3] },
+          { id: 2, items: [4, 5, 6] },
+          { id: 3, items: [7, 8, 9] }
+        ];
+        this.snap = null;
+      }
+
+      firstUpdated() {
+        // Initialize Snap with Shadow DOM and custom ghost renderer
+        this.snap = new Snap(this.shadowRoot, {
+          autoRefresh: true,
+          throttle: false,
+          distance: 3,
+          renderGhost: (element) => renderShadowGhost(element)
+        }).use(new Sortable({ animation: 150 }));
+
+        // Listen to events
+        this.snap.on('dragstart', (e) => {
+          logEvent(`dragstart: ${e.element.tagName.toLowerCase()}`);
+          e.element.setAttribute('dragging', '');
+        });
+
+        this.snap.on('dragend', (e) => {
+          logEvent(`dragend: cancelled=${e.cancelled}`);
+          e.element.removeAttribute('dragging');
+        });
+
+        this.snap.on('drop', (e) => {
+          logEvent(`drop: ${e.element.tagName.toLowerCase()}`);
+        });
+
+        logEvent('Snap initialized - all Lit components');
+      }
+
+      disconnectedCallback() {
+        super.disconnectedCallback();
+        this.snap?.destroy();
+      }
+
+      render() {
+        return html`
+          <div class="board">
+            ${this.sections.map(section => html`
+              <grid-section
+                section-id=${section.id}
+                .items=${section.items}
+                data-draggable
+                data-drag-axis="y"
+                data-droppable
+              ></grid-section>
+            `)}
+          </div>
+        `;
+      }
+    }
+    customElements.define('grid-board', GridBoard);
+  </script>
+</body>
+</html>

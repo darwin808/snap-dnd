@@ -176,6 +176,8 @@ export interface SnapOptions {
   placeholderClass?: string;
   /** Disable RAF throttling for snappier feel (may impact performance with many items) */
   throttle?: boolean;
+  /** Custom ghost renderer for complex elements (e.g., nested Lit elements with Shadow DOM) */
+  renderGhost?: (element: HTMLElement) => HTMLElement;
 }
 
 // Internal state events

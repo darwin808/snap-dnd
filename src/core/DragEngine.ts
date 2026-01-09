@@ -286,20 +286,28 @@ export class DragEngine {
       y: position.y - rect.top,
     };
 
-    // Clone element for ghost
-    this._ghost = element.cloneNode(true) as HTMLElement;
-    this._ghost.style.cssText = `
-      position: fixed;
-      left: 0;
-      top: 0;
-      width: ${rect.width}px;
-      height: ${rect.height}px;
-      margin: 0;
-      pointer-events: none;
-      z-index: 9999;
-      opacity: 0.8;
-      will-change: transform;
-    `;
+    // Use custom renderer if provided, otherwise clone
+    if (this._options.renderGhost) {
+      this._ghost = this._options.renderGhost(element);
+    } else {
+      // Clone element for ghost
+      this._ghost = element.cloneNode(true) as HTMLElement;
+
+      // Copy computed styles for Shadow DOM compatibility (recursively for all children)
+      this._copyComputedStyles(element, this._ghost);
+    }
+
+    // Override with ghost-specific styles
+    this._ghost.style.position = 'fixed';
+    this._ghost.style.left = '0';
+    this._ghost.style.top = '0';
+    this._ghost.style.width = `${rect.width}px`;
+    this._ghost.style.height = `${rect.height}px`;
+    this._ghost.style.margin = '0';
+    this._ghost.style.pointerEvents = 'none';
+    this._ghost.style.zIndex = '9999';
+    this._ghost.style.opacity = '0.8';
+    this._ghost.style.willChange = 'transform';
     this._ghost.classList.add('snap-ghost');
 
     // Position ghost at element's current location
@@ -307,6 +315,40 @@ export class DragEngine {
 
     // Append to body (not container, to avoid transform issues)
     document.body.appendChild(this._ghost);
+  }
+
+  private _copyComputedStyles(source: HTMLElement, target: HTMLElement): void {
+    const computed = window.getComputedStyle(source);
+
+    // Copy all key visual and layout styles
+    const stylesToCopy = [
+      'background', 'backgroundColor', 'backgroundImage',
+      'border', 'borderRadius', 'boxShadow',
+      'color', 'fontSize', 'fontWeight', 'fontFamily', 'textAlign',
+      'display', 'alignItems', 'justifyContent', 'flexDirection', 'flexWrap',
+      'padding', 'gap', 'margin',
+      'width', 'height', 'minWidth', 'minHeight', 'maxWidth', 'maxHeight',
+      'overflow', 'textOverflow', 'whiteSpace',
+      'lineHeight', 'letterSpacing',
+      'opacity', 'visibility',
+      'boxSizing'
+    ];
+
+    for (const prop of stylesToCopy) {
+      const value = computed.getPropertyValue(prop.replace(/([A-Z])/g, '-$1').toLowerCase());
+      if (value) {
+        target.style.setProperty(prop.replace(/([A-Z])/g, '-$1').toLowerCase(), value);
+      }
+    }
+
+    // Recursively copy styles to children
+    const sourceChildren = source.children;
+    const targetChildren = target.children;
+    for (let i = 0; i < sourceChildren.length; i++) {
+      if (sourceChildren[i] instanceof HTMLElement && targetChildren[i] instanceof HTMLElement) {
+        this._copyComputedStyles(sourceChildren[i] as HTMLElement, targetChildren[i] as HTMLElement);
+      }
+    }
   }
 
   private _updateGhost(position: Point): void {
