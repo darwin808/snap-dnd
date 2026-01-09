@@ -126,7 +126,7 @@ export class Sortable implements Plugin {
       Math.abs(lastRect.top - firstRect.top) >
       Math.abs(lastRect.left - firstRect.left);
 
-    // Find new index
+    // Find new index based on cursor position relative to item centers
     let newIndex = items.length;
     for (let i = 0; i < items.length; i++) {
       const rect = boundsCache.get(items[i]);
@@ -143,11 +143,6 @@ export class Sortable implements Plugin {
           break;
         }
       }
-    }
-
-    // Adjust for original position
-    if (newIndex > this._originalIndex) {
-      newIndex++;
     }
 
     if (newIndex !== this._currentIndex) {
